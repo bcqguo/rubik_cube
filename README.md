@@ -1,4 +1,4 @@
-# Cube in Nine Circles
+# Rubik’s Cube Represented in 9 Intersecting Circles
 
 A Rubik's cube modeled as **nine circles** rather than six faces, with a two-phase solver
 that answers any scramble in 20 turns or fewer, and a web app that shows the cube and the
