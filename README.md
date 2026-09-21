@@ -6,7 +6,7 @@ circle diagram turning together.
 
 Live at [rubik.steeplelabs.com](https://rubik.steeplelabs.com).
 
-![the nine-circle diagram, solved and scrambled](circles_panel.png)
+![the nine-circle diagram, solved and scrambled](./src/circles_panel.png)
 
 ## The model
 
