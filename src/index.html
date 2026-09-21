@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; }
+</style>
+<title>Cube in Nine Circles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #e9edf2;
+    --surface: #ffffff;
+    --surface-2: #f4f7fa;
+    --ink: #151b23;
+    --ink-soft: #596675;
+    --line: #d2dae3;
+    --line-soft: #e3e9f0;
+    --circle: #9aa7b6;
+    --accent: #5433e0;
+    --accent-soft: #ece8ff;
+    --shadow: 0 1px 2px rgba(20, 30, 45, .08), 0 8px 24px rgba(20, 30, 45, .06);
+    --sticker-edge: #1d242d;
+
+    --U: #ffffff; --D: #ffd500; --F: #009a44; --B: #003da5; --R: #ba0c2f; --L: #fe5000;
+
+    --sans: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1218;
+      --surface: #161c24;
+      --surface-2: #1c232d;
+      --ink: #e6ecf3;
+      --ink-soft: #94a2b3;
+      --line: #2a323d;
+      --line-soft: #222932;
+      --circle: #5a6777;
+      --accent: #a08fff;
+      --accent-soft: #241f45;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+      --sticker-edge: #0b0e12;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1218;
+    --surface: #161c24;
+    --surface-2: #1c232d;
+    --ink: #e6ecf3;
+    --ink-soft: #94a2b3;
+    --line: #2a323d;
+    --line-soft: #222932;
+    --circle: #5a6777;
+    --accent: #a08fff;
+    --accent-soft: #241f45;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+    --sticker-edge: #0b0e12;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-inline: 16px;
+    padding-block: 28px 44px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+  header h1 {
+    font-size: clamp(22px, 3.4vw, 31px);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--ink-soft); max-width: 68ch; }
+  header b { color: var(--ink); font-weight: 500; }
+
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--surface-2);
+  }
+  .panel-head h2 {
+    margin: 0; font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .panel-head .hint { font-size: 11.5px; color: var(--ink-soft); font-family: var(--mono); }
+
+  /* ---- 3D cube ---- */
+  .stage { flex: 1; min-height: 340px; position: relative; perspective: 900px; touch-action: none; cursor: grab; }
+  .stage:active { cursor: grabbing; }
+  .scene { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; }
+  .pivot { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+  .cubie { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+  .sticker {
+    position: absolute;
+    width: 64px; height: 64px;
+    margin-left: -32px; margin-top: -32px;
+    border: 2px solid var(--sticker-edge);
+    border-radius: 8px;
+    background: #888;
+  }
+  /* inward faces close the cubie so you never see through the gaps */
+  .sticker.blank { background: var(--sticker-edge); border-radius: 3px; }
+
+  /* ---- circle diagram ---- */
+  .diagram-wrap { padding: 6px; }
+  svg { display: block; width: 100%; height: auto; }
+  .ring { fill: none; stroke: var(--circle); stroke-width: .018; transition: stroke .18s, stroke-width .18s; }
+  .ring.live { stroke: var(--accent); stroke-width: .055; }
+  .node { stroke: var(--sticker-edge); stroke-width: .016; }
+
+  /* ---- readout ---- */
+  .readout {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+    padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    font-family: var(--mono); font-size: 13px;
+  }
+  .readout .tag {
+    font-family: var(--sans); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft);
+    margin-right: 6px;
+  }
+  .readout .cycle { color: var(--ink-soft); }
+  .readout .solved { color: var(--accent); font-weight: 600; }
+
+  /* ---- controls ---- */
+  .mode { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 2px; }
+  .switch { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+  .switch input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+  .switch span {
+    font-size: 11px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .mode-note { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .axis {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .axis h3 {
+    margin: 0; font-size: 10.5px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .axis h3 span { font-family: var(--mono); text-transform: none; letter-spacing: 0; }
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  button {
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 7px 4px; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  button:hover { background: var(--accent-soft); border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button[disabled] { opacity: .45; cursor: default; }
+  button[disabled]:hover { background: var(--surface-2); border-color: var(--line); }
+
+  .deck { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .deck button { font-family: var(--sans); padding: 8px 16px; }
+  .deck .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .deck .primary:hover { background: var(--accent); filter: brightness(1.1); }
+  .solution {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .solution-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .solution-head .tag {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  #solveStatus { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+  #solveStatus.working { color: var(--accent); }
+  #solveStatus.bad { color: #ba0c2f; }
+  .player { display: flex; gap: 8px; min-width: 0; }
+  .player input {
+    flex: 1; min-width: 0;
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+  }
+  .player input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .log {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; font-family: var(--mono); font-size: 12.5px;
+    color: var(--ink-soft); overflow-x: auto; white-space: nowrap;
+  }
+  .log b { color: var(--ink); font-weight: 500; }
+  footer { color: var(--ink-soft); font-size: 12.5px; }
+  footer code { font-family: var(--mono); color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .panels { grid-template-columns: 1fr; }
+    .controls { grid-template-columns: 1fr; }
+    .stage { height: 290px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ring { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Cube in Nine Circles</h1>
+    <p>The same puzzle, drawn twice. A face turn is a rotation of one <b>circle</b>: nine of them,
+      three per axis, each carrying <b>4 groups of 3 nodes</b>. Every sticker sits where two circles cross.</p>
+  </header>
+
+  <div class="panels">
+    <section class="panel">
+      <div class="panel-head"><h2>Cube</h2><span class="hint">drag to orbit</span></div>
+      <div class="stage" id="stage"><div class="scene" id="scene"><div class="pivot" id="pivot"></div></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Circles</h2><span class="hint" id="circleHint">9 circles &middot; 12 nodes each</span></div>
+      <div class="diagram-wrap"><svg id="diagram" viewBox="-4.23 -4.23 8.46 8.46" aria-label="Nine-circle diagram of the cube"></svg></div>
+    </section>
+  </div>
+
+  <div class="readout">
+    <span><span class="tag">Move</span><span id="lastMove">&mdash;</span></span>
+    <span class="cycle" id="cycleText">pick a turn below</span>
+    <span><span class="tag">Turns</span><span id="count">0</span></span>
+    <span id="solvedFlag" class="solved">solved</span>
+  </div>
+
+  <div class="mode">
+    <label class="switch">
+      <input type="checkbox" id="axisMode">
+      <span>Axis mode</span>
+    </label>
+    <span class="mode-note" id="modeNote"></span>
+  </div>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="deck">
+    <button class="primary" id="scramble">Scramble</button>
+    <button id="solve">Solve</button>
+    <button id="undo">Undo</button>
+    <button id="reset">Reset</button>
+    <button id="superflip">Superflip</button>
+  </div>
+
+  <div class="solution">
+    <div class="solution-head">
+      <span class="tag">Solution</span>
+      <span id="solveStatus">press Scramble and it solves itself</span>
+    </div>
+    <div class="player">
+      <input id="seq" spellcheck="false" aria-label="Move sequence"
+             value="R L U2 F U' D F2 R2 B2 L U2 F' B' U R2 D F2 U R2 U">
+      <button id="play">Play</button>
+    </div>
+  </div>
+
+  <div class="log"><b>History</b> &nbsp;<span id="history">&mdash;</span></div>
+
+  <footer>
+    Solutions are computed in the page by a two-phase search &mdash; the same algorithm as the
+    Python solver, searching three axis frames and the inverse cube. It aims for
+    <code>&le;20</code> turns, which is always enough for any position.
+  </footer>
+</div>
+
+<script id="geo" type="application/json">{"stickers":[{"p":[-1,1,-1],"n":[0,1,0]},{"p":[0,1,-1],"n":[0,1,0]},{"p":[1,1,-1],"n":[0,1,0]},{"p":[-1,1,0],"n":[0,1,0]},{"p":[0,1,0],"n":[0,1,0]},{"p":[1,1,0],"n":[0,1,0]},{"p":[-1,1,1],"n":[0,1,0]},{"p":[0,1,1],"n":[0,1,0]},{"p":[1,1,1],"n":[0,1,0]},{"p":[1,1,1],"n":[1,0,0]},{"p":[1,1,0],"n":[1,0,0]},{"p":[1,1,-1],"n":[1,0,0]},{"p":[1,0,1],"n":[1,0,0]},{"p":[1,0,0],"n":[1,0,0]},{"p":[1,0,-1],"n":[1,0,0]},{"p":[1,-1,1],"n":[1,0,0]},{"p":[1,-1,0],"n":[1,0,0]},{"p":[1,-1,-1],"n":[1,0,0]},{"p":[-1,1,1],"n":[0,0,1]},{"p":[0,1,1],"n":[0,0,1]},{"p":[1,1,1],"n":[0,0,1]},{"p":[-1,0,1],"n":[0,0,1]},{"p":[0,0,1],"n":[0,0,1]},{"p":[1,0,1],"n":[0,0,1]},{"p":[-1,-1,1],"n":[0,0,1]},{"p":[0,-1,1],"n":[0,0,1]},{"p":[1,-1,1],"n":[0,0,1]},{"p":[-1,-1,1],"n":[0,-1,0]},{"p":[0,-1,1],"n":[0,-1,0]},{"p":[1,-1,1],"n":[0,-1,0]},{"p":[-1,-1,0],"n":[0,-1,0]},{"p":[0,-1,0],"n":[0,-1,0]},{"p":[1,-1,0],"n":[0,-1,0]},{"p":[-1,-1,-1],"n":[0,-1,0]},{"p":[0,-1,-1],"n":[0,-1,0]},{"p":[1,-1,-1],"n":[0,-1,0]},{"p":[-1,1,-1],"n":[-1,0,0]},{"p":[-1,1,0],"n":[-1,0,0]},{"p":[-1,1,1],"n":[-1,0,0]},{"p":[-1,0,-1],"n":[-1,0,0]},{"p":[-1,0,0],"n":[-1,0,0]},{"p":[-1,0,1],"n":[-1,0,0]},{"p":[-1,-1,-1],"n":[-1,0,0]},{"p":[-1,-1,0],"n":[-1,0,0]},{"p":[-1,-1,1],"n":[-1,0,0]},{"p":[1,1,-1],"n":[0,0,-1]},{"p":[0,1,-1],"n":[0,0,-1]},{"p":[-1,1,-1],"n":[0,0,-1]},{"p":[1,0,-1],"n":[0,0,-1]},{"p":[0,0,-1],"n":[0,0,-1]},{"p":[-1,0,-1],"n":[0,0,-1]},{"p":[1,-1,-1],"n":[0,0,-1]},{"p":[0,-1,-1],"n":[0,0,-1]},{"p":[-1,-1,-1],"n":[0,0,-1]}],"moves":{"L":[53,1,2,50,4,5,47,7,8,9,10,11,12,13,14,15,16,17,0,19,20,3,22,23,6,25,26,18,28,29,21,31,32,24,34,35,42,39,36,43,40,37,44,41,38,45,46,33,48,49,30,51,52,27],"L'":[18,1,2,21,4,5,24,7,8,9,10,11,12,13,14,15,16,17,27,19,20,30,22,23,33,25,26,53,28,29,50,31,32,47,34,35,38,41,44,37,40,43,36,39,42,45,46,6,48,49,3,51,52,0],"L2":[27,1,2,30,4,5,33,7,8,9,10,11,12,13,14,15,16,17,53,19,20,50,22,23,47,25,26,0,28,29,3,31,32,6,34,35,44,43,42,41,40,39,38,37,36,45,46,24,48,49,21,51,52,18],"M":[0,52,2,3,49,5,6,46,8,9,10,11,12,13,14,15,16,17,18,1,20,21,4,23,24,7,26,27,19,29,30,22,32,33,25,35,36,37,38,39,40,41,42,43,44,45,34,47,48,31,50,51,28,53],"M'":[0,19,2,3,22,5,6,25,8,9,10,11,12,13,14,15,16,17,18,28,20,21,31,23,24,34,26,27,52,29,30,49,32,33,46,35,36,37,38,39,40,41,42,43,44,45,7,47,48,4,50,51,1,53],"M2":[0,28,2,3,31,5,6,34,8,9,10,11,12,13,14,15,16,17,18,52,20,21,49,23,24,46,26,27,1,29,30,4,32,33,7,35,36,37,38,39,40,41,42,43,44,45,25,47,48,22,50,51,19,53],"R":[0,1,20,3,4,23,6,7,26,15,12,9,16,13,10,17,14,11,18,19,29,21,22,32,24,25,35,27,28,51,30,31,48,33,34,45,36,37,38,39,40,41,42,43,44,8,46,47,5,49,50,2,52,53],"R'":[0,1,51,3,4,48,6,7,45,11,14,17,10,13,16,9,12,15,18,19,2,21,22,5,24,25,8,27,28,20,30,31,23,33,34,26,36,37,38,39,40,41,42,43,44,35,46,47,32,49,50,29,52,53],"R2":[0,1,29,3,4,32,6,7,35,17,16,15,14,13,12,11,10,9,18,19,51,21,22,48,24,25,45,27,28,2,30,31,5,33,34,8,36,37,38,39,40,41,42,43,44,26,46,47,23,49,50,20,52,53],"U":[6,3,0,7,4,1,8,5,2,45,46,47,12,13,14,15,16,17,9,10,11,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,18,19,20,39,40,41,42,43,44,36,37,38,48,49,50,51,52,53],"U'":[2,5,8,1,4,7,0,3,6,18,19,20,12,13,14,15,16,17,36,37,38,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,45,46,47,39,40,41,42,43,44,9,10,11,48,49,50,51,52,53],"U2":[8,7,6,5,4,3,2,1,0,36,37,38,12,13,14,15,16,17,45,46,47,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,9,10,11,39,40,41,42,43,44,18,19,20,48,49,50,51,52,53],"E":[0,1,2,3,4,5,6,7,8,9,10,11,21,22,23,15,16,17,18,19,20,39,40,41,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,48,49,50,42,43,44,45,46,47,12,13,14,51,52,53],"E'":[0,1,2,3,4,5,6,7,8,9,10,11,48,49,50,15,16,17,18,19,20,12,13,14,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,21,22,23,42,43,44,45,46,47,39,40,41,51,52,53],"E2":[0,1,2,3,4,5,6,7,8,9,10,11,39,40,41,15,16,17,18,19,20,48,49,50,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,12,13,14,42,43,44,45,46,47,21,22,23,51,52,53],"D":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,24,25,26,18,19,20,21,22,23,42,43,44,33,30,27,34,31,28,35,32,29,36,37,38,39,40,41,51,52,53,45,46,47,48,49,50,15,16,17],"D'":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,51,52,53,18,19,20,21,22,23,15,16,17,29,32,35,28,31,34,27,30,33,36,37,38,39,40,41,24,25,26,45,46,47,48,49,50,42,43,44],"D2":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,42,43,44,18,19,20,21,22,23,51,52,53,35,34,33,32,31,30,29,28,27,36,37,38,39,40,41,15,16,17,45,46,47,48,49,50,24,25,26],"F":[0,1,2,3,4,5,44,41,38,6,10,11,7,13,14,8,16,17,24,21,18,25,22,19,26,23,20,15,12,9,30,31,32,33,34,35,36,37,27,39,40,28,42,43,29,45,46,47,48,49,50,51,52,53],"F'":[0,1,2,3,4,5,9,12,15,29,10,11,28,13,14,27,16,17,20,23,26,19,22,25,18,21,24,38,41,44,30,31,32,33,34,35,36,37,8,39,40,7,42,43,6,45,46,47,48,49,50,51,52,53],"F2":[0,1,2,3,4,5,29,28,27,44,10,11,41,13,14,38,16,17,26,25,24,23,22,21,20,19,18,8,7,6,30,31,32,33,34,35,36,37,15,39,40,12,42,43,9,45,46,47,48,49,50,51,52,53],"S":[0,1,2,43,40,37,6,7,8,9,3,11,12,4,14,15,5,17,18,19,20,21,22,23,24,25,26,27,28,29,16,13,10,33,34,35,36,30,38,39,31,41,42,32,44,45,46,47,48,49,50,51,52,53],"S'":[0,1,2,10,13,16,6,7,8,9,32,11,12,31,14,15,30,17,18,19,20,21,22,23,24,25,26,27,28,29,37,40,43,33,34,35,36,5,38,39,4,41,42,3,44,45,46,47,48,49,50,51,52,53],"S2":[0,1,2,32,31,30,6,7,8,9,43,11,12,40,14,15,37,17,18,19,20,21,22,23,24,25,26,27,28,29,5,4,3,33,34,35,36,16,38,39,13,41,42,10,44,45,46,47,48,49,50,51,52,53],"B":[11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,36,39,42,2,37,38,1,40,41,0,43,44,51,48,45,52,49,46,53,50,47],"B'":[42,39,36,3,4,5,6,7,8,9,10,0,12,13,1,15,16,2,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,17,14,11,33,37,38,34,40,41,35,43,44,47,50,53,46,49,52,45,48,51],"B2":[35,34,33,3,4,5,6,7,8,9,10,42,12,13,39,15,16,36,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,2,1,0,17,37,38,14,40,41,11,43,44,53,52,51,50,49,48,47,46,45]},"nodeXY":[[-1.03503,0.59757],[-1.08368,1.01919],[-0.8973,1.54469],[-1.42449,0.4289],[-1.67303,0.96593],[-1.67515,1.85452],[-1.78639,0.00474],[-2.44364,0.52346],[-3.27413,1.89032],[3.27413,1.89032],[1.67515,1.85452],[0.8973,1.54469],[2.44364,0.52346],[1.67303,0.96593],[1.08368,1.01919],[1.78639,0.00474],[1.42449,0.4289],[1.03503,0.59757],[-0.88909,-1.54943],[-0.76849,-2.37798],[0.0,-3.78064],[-0.3408,-1.44809],[0.0,-1.93185],[0.76849,-2.37798],[0.0,-1.19514],[0.3408,-1.44809],[0.88909,-1.54943],[0.28118,-0.48404],[0.48966,-0.46052],[0.72462,-0.41836],[0.26822,-0.29694],[0.44829,-0.25882],[0.64366,-0.1938],[0.22907,-0.13225],[0.39127,-0.08382],[0.55978,-0.00148],[-0.55978,-0.00148],[-0.64366,-0.1938],[-0.72462,-0.41836],[-0.39127,-0.08382],[-0.44829,-0.25882],[-0.48966,-0.46052],[-0.22907,-0.13225],[-0.26822,-0.29694],[-0.28118,-0.48404],[0.0,0.83672],[-0.15399,0.65432],[-0.27861,0.48553],[0.15399,0.65432],[0.0,0.51764],[-0.12305,0.38076],[0.27861,0.48553],[0.12305,0.38076],[0.0,0.26451]],"nodeScale":[1.06,1.1528,1.2485,1.1528,1.2948,1.4713,1.2485,1.4713,1.8409,1.8409,1.4713,1.2485,1.4713,1.2948,1.1528,1.2485,1.1528,1.06,1.2485,1.4713,1.8409,1.1528,1.2948,1.4713,1.06,1.1528,1.2485,0.8815,0.9084,0.9524,0.8493,0.8722,0.9084,0.8289,0.8493,0.8815,0.8815,0.9084,0.9524,0.8493,0.8722,0.9084,0.8289,0.8493,0.8815,0.9524,0.9084,0.8815,0.9084,0.8722,0.8493,0.8815,0.8493,0.8289],"circles":[{"name":"L","axis":0,"layer":-1,"cx":-0.80596,"cy":-0.46532,"r":1.0873,"belt":[0,3,6,18,21,24,27,30,33,47,50,53],"groups":[[0,3,6],[18,21,24],[27,30,33],[47,50,53]],"cycle":["U","F","D","B"]},{"name":"M","axis":0,"layer":0,"cx":-1.22474,"cy":-0.70711,"r":1.73205,"belt":[1,4,7,19,22,25,28,31,34,46,49,52],"groups":[[1,4,7],[19,22,25],[28,31,34],[46,49,52]],"cycle":["U","F","D","B"]},{"name":"R","axis":0,"layer":1,"cx":-2.54951,"cy":-1.47196,"r":3.43947,"belt":[2,5,8,45,48,51,29,32,35,20,23,26],"groups":[[2,5,8],[45,48,51],[29,32,35],[20,23,26]],"cycle":["U","B","D","F"]},{"name":"U","axis":1,"layer":1,"cx":2.54951,"cy":-1.47196,"r":3.43947,"belt":[9,10,11,18,19,20,36,37,38,45,46,47],"groups":[[9,10,11],[18,19,20],[36,37,38],[45,46,47]],"cycle":["R","F","L","B"]},{"name":"E","axis":1,"layer":0,"cx":1.22474,"cy":-0.70711,"r":1.73205,"belt":[12,13,14,48,49,50,39,40,41,21,22,23],"groups":[[12,13,14],[48,49,50],[39,40,41],[21,22,23]],"cycle":["R","B","L","F"]},{"name":"D","axis":1,"layer":-1,"cx":0.80596,"cy":-0.46532,"r":1.0873,"belt":[15,16,17,51,52,53,42,43,44,24,25,26],"groups":[[15,16,17],[51,52,53],[42,43,44],[24,25,26]],"cycle":["R","B","L","F"]},{"name":"F","axis":2,"layer":1,"cx":0.0,"cy":2.94392,"r":3.43947,"belt":[6,7,8,9,12,15,27,28,29,38,41,44],"groups":[[6,7,8],[9,12,15],[27,28,29],[38,41,44]],"cycle":["U","R","D","L"]},{"name":"S","axis":2,"layer":0,"cx":-0.0,"cy":1.41421,"r":1.73205,"belt":[3,4,5,10,13,16,30,31,32,37,40,43],"groups":[[3,4,5],[10,13,16],[30,31,32],[37,40,43]],"cycle":["U","R","D","L"]},{"name":"B","axis":2,"layer":-1,"cx":-0.0,"cy":0.93064,"r":1.0873,"belt":[0,1,2,36,39,42,33,34,35,11,14,17],"groups":[[0,1,2],[36,39,42],[33,34,35],[11,14,17]],"cycle":["U","L","D","R"]}],"cornerFacelets":[[8,9,20],[6,18,38],[0,36,47],[2,45,11],[29,26,15],[27,44,24],[33,53,42],[35,17,51]],"edgeFacelets":[[5,10],[7,19],[3,37],[1,46],[32,16],[28,25],[30,43],[34,52],[23,12],[21,41],[50,39],[48,14]],"cornerNames":["URF","UFL","ULB","UBR","DFR","DLF","DBL","DRB"],"edgeNames":["UR","UF","UL","UB","DR","DF","DL","DB","FR","FL","BL","BR"],"p1Moves":["U","U2","U'","R","R2","R'","F","F2","F'","D","D2","D'","L","L2","L'","B","B2","B'"],"p2Moves":["U","U2","U'","D","D2","D'","R2","L2","F2","B2"],"moveCubies":{"U":{"cp":[3,0,1,2,4,5,6,7],"co":[0,0,0,0,0,0,0,0],"ep":[3,0,1,2,4,5,6,7,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"U2":{"cp":[2,3,0,1,4,5,6,7],"co":[0,0,0,0,0,0,0,0],"ep":[2,3,0,1,4,5,6,7,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"U'":{"cp":[1,2,3,0,4,5,6,7],"co":[0,0,0,0,0,0,0,0],"ep":[1,2,3,0,4,5,6,7,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"R":{"cp":[4,1,2,0,7,5,6,3],"co":[2,0,0,1,1,0,0,2],"ep":[8,1,2,3,11,5,6,7,4,9,10,0],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"R2":{"cp":[7,1,2,4,3,5,6,0],"co":[0,0,0,0,0,0,0,0],"ep":[4,1,2,3,0,5,6,7,11,9,10,8],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"R'":{"cp":[3,1,2,7,0,5,6,4],"co":[2,0,0,1,1,0,0,2],"ep":[11,1,2,3,8,5,6,7,0,9,10,4],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"F":{"cp":[1,5,2,3,0,4,6,7],"co":[1,2,0,0,2,1,0,0],"ep":[0,9,2,3,4,8,6,7,1,5,10,11],"eo":[0,1,0,0,0,1,0,0,1,1,0,0]},"F2":{"cp":[5,4,2,3,1,0,6,7],"co":[0,0,0,0,0,0,0,0],"ep":[0,5,2,3,4,1,6,7,9,8,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"F'":{"cp":[4,0,2,3,5,1,6,7],"co":[1,2,0,0,2,1,0,0],"ep":[0,8,2,3,4,9,6,7,5,1,10,11],"eo":[0,1,0,0,0,1,0,0,1,1,0,0]},"D":{"cp":[0,1,2,3,5,6,7,4],"co":[0,0,0,0,0,0,0,0],"ep":[0,1,2,3,5,6,7,4,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"D2":{"cp":[0,1,2,3,6,7,4,5],"co":[0,0,0,0,0,0,0,0],"ep":[0,1,2,3,6,7,4,5,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"D'":{"cp":[0,1,2,3,7,4,5,6],"co":[0,0,0,0,0,0,0,0],"ep":[0,1,2,3,7,4,5,6,8,9,10,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"L":{"cp":[0,2,6,3,4,1,5,7],"co":[0,1,2,0,0,2,1,0],"ep":[0,1,10,3,4,5,9,7,8,2,6,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"L2":{"cp":[0,6,5,3,4,2,1,7],"co":[0,0,0,0,0,0,0,0],"ep":[0,1,6,3,4,5,2,7,8,10,9,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"L'":{"cp":[0,5,1,3,4,6,2,7],"co":[0,1,2,0,0,2,1,0],"ep":[0,1,9,3,4,5,10,7,8,6,2,11],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"B":{"cp":[0,1,3,7,4,5,2,6],"co":[0,0,1,2,0,0,2,1],"ep":[0,1,2,11,4,5,6,10,8,9,3,7],"eo":[0,0,0,1,0,0,0,1,0,0,1,1]},"B2":{"cp":[0,1,7,6,4,5,3,2],"co":[0,0,0,0,0,0,0,0],"ep":[0,1,2,7,4,5,6,3,8,9,11,10],"eo":[0,0,0,0,0,0,0,0,0,0,0,0]},"B'":{"cp":[0,1,6,2,4,5,7,3],"co":[0,0,1,2,0,0,2,1],"ep":[0,1,2,10,4,5,6,11,8,9,7,3],"eo":[0,0,0,1,0,0,0,1,0,0,1,1]}},"rotations":[{"perm":[11,14,17,10,13,16,9,12,15,29,32,35,28,31,34,27,30,33,20,23,26,19,22,25,18,21,24,38,41,44,37,40,43,36,39,42,2,5,8,1,4,7,0,3,6,51,48,45,52,49,46,53,50,47],"rename":{"U":"L","R":"U","F":"F","D":"R","L":"D","B":"B"},"back":{"L":"U","U":"R","F":"F","R":"D","D":"L","B":"B"}},{"perm":[53,52,51,50,49,48,47,46,45,11,14,17,10,13,16,9,12,15,0,1,2,3,4,5,6,7,8,18,19,20,21,22,23,24,25,26,42,39,36,43,40,37,44,41,38,35,34,33,32,31,30,29,28,27],"rename":{"U":"F","R":"R","F":"D","D":"B","L":"L","B":"U"},"back":{"F":"U","R":"R","D":"F","B":"D","L":"L","U":"B"}}]}</script>
+<script>
+/* Two-phase solver: phase 1 drives the cube into G1 = <U,D,R2,L2,F2,B2>, phase 2 finishes
+   inside it. Both phases are IDA* guided by pruning tables built here by breadth-first
+   search. G1 is defined by the U/D axis, so the search runs three axis frames and the
+   inverse cube and takes whichever gets there first. */
+(function () {
+  "use strict";
+  const GEO = JSON.parse(document.getElementById("geo").textContent);
+  const P1 = GEO.p1Moves, P2 = GEO.p2Moves, MC = GEO.moveCubies;
+  const N_TWIST = 2187, N_FLIP = 2048, N_SLICE = 495, N_SPERM = 24;
+  const N_CPERM = 40320, N_EPERM = 40320;
+  const FACES = "URFDLB";
+  const P1_FACE = P1.map(m => FACES.indexOf(m[0]));
+  const P2_FACE = P2.map(m => FACES.indexOf(m[0]));
+  const P2_IN_P1 = new Set(P2.map(m => P1.indexOf(m)));
+  const OPP = { 0: 3, 3: 0, 1: 4, 4: 1, 2: 5, 5: 2 };
+
+  const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320];
+
+  function applyCubie(a, m) {
+    const cp = new Array(8), co = new Array(8), ep = new Array(12), eo = new Array(12);
+    for (let i = 0; i < 8; i++) { const j = m.cp[i]; cp[i] = a.cp[j]; co[i] = (a.co[j] + m.co[i]) % 3; }
+    for (let i = 0; i < 12; i++) { const j = m.ep[i]; ep[i] = a.ep[j]; eo[i] = (a.eo[j] + m.eo[i]) % 2; }
+    return { cp, co, ep, eo };
+  }
+  function inverseCubie(c) {
+    const cp = new Array(8), co = new Array(8), ep = new Array(12), eo = new Array(12);
+    for (let i = 0; i < 8; i++) { cp[c.cp[i]] = i; co[c.cp[i]] = (3 - c.co[i]) % 3; }
+    for (let i = 0; i < 12; i++) { ep[c.ep[i]] = i; eo[c.ep[i]] = c.eo[i]; }
+    return { cp, co, ep, eo };
+  }
+  function idCube() {
+    return { cp: [0, 1, 2, 3, 4, 5, 6, 7], co: new Array(8).fill(0),
+             ep: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], eo: new Array(12).fill(0) };
+  }
+  function isSolved(c) {
+    for (let i = 0; i < 8; i++) if (c.cp[i] !== i || c.co[i] !== 0) return false;
+    for (let i = 0; i < 12; i++) if (c.ep[i] !== i || c.eo[i] !== 0) return false;
+    return true;
+  }
+
+  function permRank(p) {
+    const n = p.length; let r = 0;
+    for (let i = 0; i < n; i++) {
+      let c = 0;
+      for (let j = i + 1; j < n; j++) if (p[j] < p[i]) c++;
+      r = r * (n - i) + c;
+    }
+    return r;
+  }
+  function permUnrank(r, n) {
+    const avail = []; for (let i = 0; i < n; i++) avail.push(i);
+    const p = [];
+    for (let i = 0; i < n; i++) { const f = FACT[n - 1 - i]; p.push(avail.splice(Math.floor(r / f), 1)[0]); r %= f; }
+    return p;
+  }
+
+  const SLICE_SETS = [], SLICE_INDEX = new Map();
+  for (let a = 0; a < 12; a++) for (let b = a + 1; b < 12; b++)
+    for (let c = b + 1; c < 12; c++) for (let d = c + 1; d < 12; d++) {
+      SLICE_INDEX.set([a, b, c, d].join(","), SLICE_SETS.length);
+      SLICE_SETS.push([a, b, c, d]);
+    }
+  const SLICE_SOLVED = SLICE_INDEX.get("8,9,10,11");
+
+  const getTwist = c => { let t = 0; for (let i = 0; i < 7; i++) t = t * 3 + c.co[i]; return t; };
+  const getFlip = c => { let f = 0; for (let i = 0; i < 11; i++) f = f * 2 + c.eo[i]; return f; };
+  const getSlice = c => {
+    const pos = [];
+    for (let i = 0; i < 12; i++) if (c.ep[i] >= 8) pos.push(i);
+    return SLICE_INDEX.get(pos.join(","));
+  };
+  const getCperm = c => permRank(c.cp);
+  const getEperm = c => permRank(c.ep.slice(0, 8));
+  const getSperm = c => permRank(c.ep.slice(8).map(e => e - 8));
+
+  function cubeWithTwist(t) {
+    const c = idCube(), co = [];
+    let rest = t;
+    for (let i = 0; i < 7; i++) { co.push(rest % 3); rest = Math.floor(rest / 3); }
+    co.reverse();
+    co.push((3 - co.reduce((a, b) => (a + b) % 3, 0)) % 3);
+    c.co = co; return c;
+  }
+  function cubeWithFlip(f) {
+    const c = idCube(), eo = [];
+    let rest = f;
+    for (let i = 0; i < 11; i++) { eo.push(rest % 2); rest = Math.floor(rest / 2); }
+    eo.reverse();
+    eo.push(eo.reduce((a, b) => a + b, 0) % 2);
+    c.eo = eo; return c;
+  }
+  function cubeWithSlice(s) {
+    const c = idCube(), set = new Set(SLICE_SETS[s]);
+    const others = [0, 1, 2, 3, 4, 5, 6, 7];
+    let k = 0;
+    for (let i = 0; i < 12; i++) c.ep[i] = set.has(i) ? 8 + (k++) : others.shift();
+    return c;
+  }
+  function cubeWithCperm(p) { const c = idCube(); c.cp = permUnrank(p, 8); return c; }
+  function cubeWithEperm(p) { const c = idCube(); c.ep = permUnrank(p, 8).concat([8, 9, 10, 11]); return c; }
+  function cubeWithSperm(p) { const c = idCube(); c.ep = [0, 1, 2, 3, 4, 5, 6, 7].concat(permUnrank(p, 4).map(x => x + 8)); return c; }
+
+  function buildMoveTable(size, builder, getter, moves) {
+    const nm = moves.length, tbl = new Uint16Array(size * nm);
+    for (let i = 0; i < size; i++) {
+      const cc = builder(i);
+      for (let j = 0; j < nm; j++) tbl[i * nm + j] = getter(applyCubie(cc, MC[moves[j]]));
+    }
+    return tbl;
+  }
+
+  function buildPruning(mvA, mvB, sizeB, startA, startB, nMoves) {
+    const dist = new Uint8Array(mvA.length / nMoves * sizeB).fill(255);
+    const start = startA * sizeB + startB;
+    dist[start] = 0;
+    let frontier = [start], depth = 0;
+    while (frontier.length) {
+      const next = [];
+      for (let k = 0; k < frontier.length; k++) {
+        const idx = frontier[k], a = (idx / sizeB) | 0, b = idx % sizeB;
+        for (let j = 0; j < nMoves; j++) {
+          const ni = mvA[a * nMoves + j] * sizeB + mvB[b * nMoves + j];
+          if (dist[ni] === 255) { dist[ni] = depth + 1; next.push(ni); }
+        }
+      }
+      if (!next.length) break;
+      depth++;
+      frontier = next;
+    }
+    return dist;
+  }
+
+  let MV_TW, MV_FL, MV_SL, MV_CP, MV_EP, MV_SP, PT_FS, PT_TS, PT_CS, PT_ES;
+  let ready = false;
+  const tick = () => new Promise(r => setTimeout(r, 0));
+
+  async function prepare(onStep) {
+    if (ready) return;
+    const steps = [
+      ["move tables", () => {
+        MV_TW = buildMoveTable(N_TWIST, cubeWithTwist, getTwist, P1);
+        MV_FL = buildMoveTable(N_FLIP, cubeWithFlip, getFlip, P1);
+        MV_SL = buildMoveTable(N_SLICE, cubeWithSlice, getSlice, P1);
+      }],
+      ["phase-2 tables", () => {
+        MV_CP = buildMoveTable(N_CPERM, cubeWithCperm, getCperm, P2);
+        MV_EP = buildMoveTable(N_EPERM, cubeWithEperm, getEperm, P2);
+        MV_SP = buildMoveTable(N_SPERM, cubeWithSperm, getSperm, P2);
+      }],
+      ["pruning 1/4", () => { PT_FS = buildPruning(MV_FL, MV_SL, N_SLICE, 0, SLICE_SOLVED, 18); }],
+      ["pruning 2/4", () => { PT_TS = buildPruning(MV_TW, MV_SL, N_SLICE, 0, SLICE_SOLVED, 18); }],
+      ["pruning 3/4", () => { PT_CS = buildPruning(MV_CP, MV_SP, N_SPERM, 0, 0, 10); }],
+      ["pruning 4/4", () => { PT_ES = buildPruning(MV_EP, MV_SP, N_SPERM, 0, 0, 10); }]
+    ];
+    for (const [label, fn] of steps) { if (onStep) onStep(label); await tick(); fn(); }
+    ready = true;
+  }
+
+  const cornerByColors = new Map(), edgeByColors = new Map();
+  GEO.cornerNames.forEach((n, i) => cornerByColors.set(n.split("").sort().join(""), i));
+  GEO.edgeNames.forEach((n, i) => edgeByColors.set(n.split("").sort().join(""), i));
+
+  function fromFacelets(state) {
+    const cp = [], co = [], ep = [], eo = [];
+    for (let s = 0; s < 8; s++) {
+      const f = GEO.cornerFacelets[s], cols = [state[f[0]], state[f[1]], state[f[2]]];
+      let ori = 0;
+      for (let i = 0; i < 3; i++) if (cols[i] === "U" || cols[i] === "D") { ori = i; break; }
+      cp[s] = cornerByColors.get(cols.slice().sort().join(""));
+      co[s] = ori;
+    }
+    for (let s = 0; s < 12; s++) {
+      const f = GEO.edgeFacelets[s], cols = [state[f[0]], state[f[1]]];
+      const piece = edgeByColors.get(cols.slice().sort().join(""));
+      ep[s] = piece;
+      eo[s] = cols[0] === GEO.edgeNames[piece][0] ? 0 : 1;
+    }
+    return { cp, co, ep, eo };
+  }
+
+  function invertSeq(moves) {
+    return moves.slice().reverse().map(m =>
+      m.length === 1 ? m + "'" : (m[1] === "2" ? m : m[0]));
+  }
+  function translate(moves, back, inverted) {
+    const out = moves.map(m => (back ? back[m[0]] : m[0]) + m.slice(1));
+    return inverted ? invertSeq(out) : out;
+  }
+
+  function buildFrames(state) {
+    const variants = [{ state, back: null }];
+    GEO.rotations.forEach(r => {
+      let s = "";
+      for (let i = 0; i < 54; i++) s += r.rename[state[r.perm[i]]];
+      variants.push({ state: s, back: r.back });
+    });
+    const frames = [];
+    variants.forEach(v => {
+      const cc = fromFacelets(v.state);
+      [false, true].forEach(inverted => {
+        const c = inverted ? inverseCubie(cc) : cc;
+        frames.push({ cc: c, back: v.back, inverted,
+                      twist: getTwist(c), flip: getFlip(c), slice: getSlice(c) });
+      });
+    });
+    return frames;
+  }
+
+  function phase2Solve(cperm, eperm, sperm, limit, lastFace) {
+    const path = [];
+    function rec(cp, ep, sp, depth, last) {
+      if (cp === 0 && ep === 0 && sp === 0) return path.slice();
+      if (depth === 0) return null;
+      if (Math.max(PT_CS[cp * N_SPERM + sp], PT_ES[ep * N_SPERM + sp]) > depth) return null;
+      for (let j = 0; j < 10; j++) {
+        const face = P2_FACE[j];
+        if (face === last || (OPP[face] === last && face < last)) continue;
+        path.push(j);
+        const found = rec(MV_CP[cp * 10 + j], MV_EP[ep * 10 + j], MV_SP[sp * 10 + j], depth - 1, face);
+        path.pop();
+        if (found) return found;
+      }
+      return null;
+    }
+    for (let d = 0; d <= limit; d++) { const f = rec(cperm, eperm, sperm, d, lastFace); if (f) return f; }
+    return null;
+  }
+
+  function solve(state, opts) {
+    opts = opts || {};
+    if (!ready) return null;
+    const maxLen = opts.maxLength || 20;
+    const maxDepth = opts.maxPhase1Depth || 13;
+    const limitAt = performance.now() + (opts.timeoutMs || 12000);
+    if (isSolved(fromFacelets(state))) return [];
+
+    const frames = buildFrames(state);
+    let best = null, timedOut = false, ticks = 0;
+
+    for (let depth = 0; depth <= maxDepth; depth++) {
+      if (depth > maxLen || timedOut || (best && depth >= best.length)) break;
+      for (const fr of frames) {
+        const path = [];
+        const hit = (function rec(twist, flip, slc, d, last) {
+          if (d === 0) {
+            if (twist !== 0 || flip !== 0 || slc !== SLICE_SOLVED) return false;
+            // a phase-1 solution ending in a G1 move is redundant: phase 2 absorbs it
+            if (path.length && P2_IN_P1.has(path[path.length - 1])) return false;
+            const budget = (best ? best.length - 1 : maxLen) - path.length;
+            if (budget < 0) return false;
+            let mid = fr.cc;
+            for (let i = 0; i < path.length; i++) mid = applyCubie(mid, MC[P1[path[i]]]);
+            const lf = path.length ? P1_FACE[path[path.length - 1]] : -1;
+            const p2 = phase2Solve(getCperm(mid), getEperm(mid), getSperm(mid), budget, lf);
+            if (!p2) return false;
+            best = translate(path.map(j => P1[j]).concat(p2.map(j => P2[j])), fr.back, fr.inverted);
+            return true;
+          }
+          if (Math.max(PT_FS[flip * N_SLICE + slc], PT_TS[twist * N_SLICE + slc]) > d) return false;
+          if ((++ticks & 8191) === 0 && performance.now() > limitAt) { timedOut = true; return true; }
+          for (let j = 0; j < 18; j++) {
+            const face = P1_FACE[j];
+            if (face === last || (OPP[face] === last && face < last)) continue;
+            path.push(j);
+            const r = rec(MV_TW[twist * 18 + j], MV_FL[flip * 18 + j], MV_SL[slc * 18 + j], d - 1, face);
+            path.pop();
+            if (r) return true;
+          }
+          return false;
+        })(fr.twist, fr.flip, fr.slice, depth, -1);
+        if (hit) return best;
+      }
+    }
+    return best;
+  }
+
+  function verify(state, moves) {
+    let s = state;
+    for (const m of moves) {
+      const perm = GEO.moves[m];
+      if (!perm) return false;
+      let out = "";
+      for (let i = 0; i < 54; i++) out += s[perm[i]];
+      s = out;
+    }
+    return s === "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+  }
+
+  window.CubeSolver = { prepare, solve, verify, isReady: () => ready };
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  const GEO = JSON.parse(document.getElementById("geo").textContent);
+  const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+  const SUPERFLIP = "UBULURUFURURFRBRDRFUFLFRFDFDFDLDRDBDLULBLFLDLBUBRBLBDB";
+  const COLOR = { U: "#ffffff", D: "#ffd500", F: "#009a44", B: "#003da5", R: "#ba0c2f", L: "#fe5000" };
+  const DUR = 380;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // CSS rotation axis + sign for each circle, so the animation turns the way the puzzle does
+  const SPIN = {
+    R: ["X", 1], M: ["X", -1], L: ["X", -1],
+    U: ["Y", -1], E: ["Y", 1], D: ["Y", 1],
+    F: ["Z", 1], S: ["Z", 1], B: ["Z", -1]
+  };
+  const AXIS_GROUPS = [
+    { label: "X axis", names: ["L", "M", "R"] },
+    { label: "Y axis", names: ["U", "E", "D"] },
+    { label: "Z axis", names: ["F", "S", "B"] }
+  ];
+  const FACE_MOVES = [];
+  ["U", "R", "F", "D", "L", "B"].forEach(f => ["", "'", "2"].forEach(s => FACE_MOVES.push(f + s)));
+
+  let state = SOLVED;
+  let history = [];
+  let busy = false;
+  const queue = [];
+
+  /* ---------------- cube ---------------- */
+  const CELL = 68;
+  const scene = document.getElementById("scene");
+  const pivot = document.getElementById("pivot");
+  const stickerEls = new Array(54);
+  const cubies = new Map();
+  const DIRS = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]];
+  const FACE_ROT = ["", "rotateY(180deg)", "rotateY(90deg)", "rotateY(-90deg)",
+                    "rotateX(90deg)", "rotateX(-90deg)"];
+
+  const byPosNormal = new Map();
+  GEO.stickers.forEach((s, i) => byPosNormal.set(s.p.join(",") + "|" + s.n.join(","), i));
+
+  const seen = new Set();
+  GEO.stickers.forEach(s => {
+    const key = s.p.join(",");
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const cubie = document.createElement("div");
+    cubie.className = "cubie";
+    cubie.style.transform =
+      `translate3d(${s.p[0] * CELL}px, ${-s.p[1] * CELL}px, ${s.p[2] * CELL}px)`;
+    cubie.dataset.pos = key;
+    scene.appendChild(cubie);
+    cubies.set(key, cubie);
+
+    // every cubie gets all six faces: coloured where a sticker lives, dark elsewhere,
+    // so the body is solid and nothing shows through from the far side
+    DIRS.forEach((d, k) => {
+      const el = document.createElement("div");
+      el.className = "sticker";
+      el.style.transform = `${FACE_ROT[k]} translateZ(${CELL / 2}px)`;
+      const idx = byPosNormal.get(key + "|" + d.join(","));
+      if (idx === undefined) el.classList.add("blank");
+      else stickerEls[idx] = el;
+      cubie.appendChild(el);
+    });
+  });
+
+  let rotX = -24, rotY = -34;
+  function orient() { scene.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`; }
+  orient();
+
+  const stage = document.getElementById("stage");
+  let drag = null;
+  stage.addEventListener("pointerdown", e => {
+    drag = { x: e.clientX, y: e.clientY, rx: rotX, ry: rotY };
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!drag) return;
+    rotY = drag.ry + (e.clientX - drag.x) * 0.5;
+    rotX = Math.max(-89, Math.min(89, drag.rx - (e.clientY - drag.y) * 0.5));
+    orient();
+  });
+  const endDrag = () => { drag = null; };
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+
+  /* ---------------- circle diagram ---------------- */
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("diagram");
+  const ringEls = {};
+  const nodeEls = new Array(54);
+  const travelLayer = document.createElementNS(SVG_NS, "g");
+
+  GEO.circles.forEach(c => {
+    const el = document.createElementNS(SVG_NS, "circle");
+    el.setAttribute("class", "ring");
+    el.setAttribute("cx", c.cx);
+    el.setAttribute("cy", -c.cy);
+    el.setAttribute("r", c.r);
+    svg.appendChild(el);
+    ringEls[c.name] = el;
+  });
+  GEO.nodeXY.forEach((xy, i) => {
+    const el = document.createElementNS(SVG_NS, "circle");
+    el.setAttribute("class", "node");
+    el.setAttribute("cx", xy[0]);
+    el.setAttribute("cy", -xy[1]);
+    el.setAttribute("r", (0.052 * GEO.nodeScale[i]).toFixed(4));
+    svg.appendChild(el);
+    nodeEls[i] = el;
+  });
+  svg.appendChild(travelLayer);
+
+  const circleByName = {};
+  GEO.circles.forEach(c => { circleByName[c.name] = c; });
+
+  // which way each circle spins on screen, from the verified 3-step rotation of its ring
+  const spinSign = {};
+  GEO.circles.forEach(c => {
+    const ang = i => Math.atan2(-GEO.nodeXY[i][1] - -c.cy, GEO.nodeXY[i][0] - c.cx);
+    const ring = c.belt.slice().sort((a, b) => ang(a) - ang(b));
+    const perm = GEO.moves[c.name];
+    const src = ring[0];
+    const dest = perm.indexOf(src);
+    const shift = ((ring.indexOf(dest) - ring.indexOf(src)) % 12 + 12) % 12;
+    spinSign[c.name] = shift === 3 ? 1 : -1;
+  });
+
+  function nodePos(i) { return [GEO.nodeXY[i][0], -GEO.nodeXY[i][1]]; }
+
+  /* ---------------- painting ---------------- */
+  function paint() {
+    for (let i = 0; i < 54; i++) {
+      const c = COLOR[state[i]];
+      stickerEls[i].style.background = c;
+      nodeEls[i].setAttribute("fill", c);
+    }
+    document.getElementById("count").textContent = history.length;
+    const solved = state === SOLVED;
+    const flag = document.getElementById("solvedFlag");
+    flag.textContent = solved ? "solved" : "";
+    document.getElementById("undo").disabled = history.length === 0;
+    const h = document.getElementById("history");
+    h.innerHTML = history.length
+      ? history.slice(-40).map((m, i, a) => i === a.length - 1 ? `<b>${m}</b>` : m).join(" ")
+      : "&mdash;";
+  }
+
+  function permute(s, perm) {
+    let out = "";
+    for (let i = 0; i < 54; i++) out += s[perm[i]];
+    return out;
+  }
+
+  /* ---------------- moves ---------------- */
+  function spinTravel(move, before, perm) {
+    const face = move[0];
+    const c = circleByName[face];
+    const turns = move.length === 1 ? 1 : (move[1] === "2" ? 2 : 3);
+    const belt = new Set(c.belt);
+    const travellers = [];
+
+    for (let d = 0; d < 54; d++) {
+      const s = perm[d];
+      if (s === d) continue;
+      const from = nodePos(s), to = nodePos(d);
+      const el = document.createElementNS(SVG_NS, "circle");
+      el.setAttribute("class", "node");
+      el.setAttribute("r", (0.052 * GEO.nodeScale[s]).toFixed(4));
+      el.setAttribute("fill", COLOR[before[s]]);
+      travelLayer.appendChild(el);
+      nodeEls[s].setAttribute("opacity", "0.12");
+      nodeEls[d].setAttribute("opacity", "0.12");
+
+      if (belt.has(s) && belt.has(d)) {
+        const cx = c.cx, cy = -c.cy;
+        const a0 = Math.atan2(from[1] - cy, from[0] - cx);
+        const rad = Math.hypot(from[0] - cx, from[1] - cy);
+        // the ring rotates a clean quarter per turn, so the arc lands exactly on the target node
+        const sweep = spinSign[face] * (Math.PI / 2) * (turns === 3 ? -1 : turns);
+        travellers.push({ el, kind: "arc", cx, cy, a0, rad, sweep });
+      } else {
+        travellers.push({ el, kind: "line", from, to });
+      }
+    }
+    return travellers;
+  }
+
+  function runMove(move, animate) {
+    const perm = GEO.moves[move];
+    const before = state;
+    state = permute(state, perm);
+
+    const face = move[0];
+    const c = circleByName[face];
+    document.getElementById("lastMove").textContent = move;
+    document.getElementById("cycleText").textContent =
+      `circle ${face} carries ${c.cycle.join(" → ")}`;
+
+    if (!animate || reduced) { paint(); return Promise.resolve(); }
+
+    ringEls[face].classList.add("live");
+    const travellers = spinTravel(move, before, perm);
+
+    // cube: swing the layer, then bake the result by repainting
+    const layer = [];
+    cubies.forEach((el, key) => {
+      const p = key.split(",").map(Number);
+      if (p[c.axis] === c.layer) layer.push(el);
+    });
+    layer.forEach(el => pivot.appendChild(el));
+    const [cssAxis, sign] = SPIN[face];
+    const quarter = move.length === 1 ? 1 : (move[1] === "2" ? 2 : -1);
+    const deg = sign * 90 * quarter;
+    pivot.style.transition = "none";
+    pivot.style.transform = "rotateX(0deg)";
+    void pivot.offsetWidth;
+    pivot.style.transition = `transform ${DUR}ms cubic-bezier(.45,.05,.2,1)`;
+    pivot.style.transform = `rotate${cssAxis}(${deg}deg)`;
+
+    const t0 = performance.now();
+    return new Promise(resolve => {
+      function frame(now) {
+        const t = Math.min(1, (now - t0) / DUR);
+        const e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        travellers.forEach(tr => {
+          let x, y;
+          if (tr.kind === "arc") {
+            const a = tr.a0 + tr.sweep * e;
+            x = tr.cx + tr.rad * Math.cos(a);
+            y = tr.cy + tr.rad * Math.sin(a);
+          } else {
+            x = tr.from[0] + (tr.to[0] - tr.from[0]) * e;
+            y = tr.from[1] + (tr.to[1] - tr.from[1]) * e;
+          }
+          tr.el.setAttribute("cx", x);
+          tr.el.setAttribute("cy", y);
+        });
+        if (t < 1) { requestAnimationFrame(frame); return; }
+
+        travellers.forEach(tr => tr.el.remove());
+        for (let i = 0; i < 54; i++) nodeEls[i].removeAttribute("opacity");
+        ringEls[face].classList.remove("live");
+        pivot.style.transition = "none";
+        pivot.style.transform = "";
+        layer.forEach(el => scene.appendChild(el));
+        paint();
+        resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function pump() {
+    if (busy || !queue.length) return;
+    const job = queue.shift();
+    if (job.move === null) {            // end of a played sequence
+      playing = false;
+      if (state === SOLVED) {
+        staleShown = false;
+        setStatus(`solved — ${turns(job.count)} played`);
+      } else {
+        markStale();
+      }
+      pump();
+      return;
+    }
+    busy = true;
+    if (job.record) history.push(job.move);
+    runMove(job.move, job.animate).then(() => { busy = false; pump(); });
+  }
+
+  function doMove(move, opts) {
+    opts = opts || {};
+    if (opts.record !== false && !playing) markStale();
+    queue.push({ move, animate: opts.animate !== false, record: opts.record !== false });
+    pump();
+  }
+
+  /* ---------------- solving ---------------- */
+  const seqInput = document.getElementById("seq");
+  const statusEl = document.getElementById("solveStatus");
+  const solveBtn = document.getElementById("solve");
+  let playing = false, solving = false, staleShown = false;
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = kind || "";
+  }
+  const turns = n => `${n} ${n === 1 ? "turn" : "turns"}`;
+  function markStale() {
+    if (staleShown || solving) return;
+    staleShown = true;
+    setStatus("cube moved since this solution — press Solve");
+  }
+
+  async function requestSolve() {
+    if (solving) return;
+    if (state === SOLVED) { setStatus("already solved"); return; }
+    solving = true;
+    solveBtn.disabled = true;
+    try {
+      if (!window.CubeSolver.isReady()) {
+        await window.CubeSolver.prepare(step => setStatus("building " + step + "…", "working"));
+      }
+      setStatus("searching…", "working");
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+      const t0 = performance.now();
+      const sol = window.CubeSolver.solve(state, { timeoutMs: 12000 });
+      const ms = Math.round(performance.now() - t0);
+
+      if (!sol) {
+        setStatus("no solution within 20 turns found in time", "bad");
+      } else if (!window.CubeSolver.verify(state, sol)) {
+        setStatus("solver returned a sequence that does not solve — not applied", "bad");
+      } else {
+        seqInput.value = sol.join(" ");
+        staleShown = false;
+        setStatus(`${turns(sol.length)} · found in ${ms} ms · press Play`);
+      }
+    } finally {
+      solving = false;
+      solveBtn.disabled = false;
+    }
+  }
+
+  /* ---------------- controls ---------------- */
+  // Standard notation turns every face clockwise as seen from OUTSIDE that face, so
+  // L/M/D/E/B visually oppose the R/U/F end of their own axis. In axis mode the first
+  // button spins every circle on an axis the same way, by sending the inverse move.
+  const AXIS_FLIP = new Set(["L", "M", "D", "E", "B"]);
+  const axisModeBox = document.getElementById("axisMode");
+  const modeNote = document.getElementById("modeNote");
+  const moveButtons = [];
+  let axisMode = false;
+
+  function resolveMove(circle, slot) {
+    const flip = axisMode && AXIS_FLIP.has(circle);
+    if (slot === 2) return circle + "2";
+    if (slot === 0) return flip ? circle + "'" : circle;
+    return flip ? circle : circle + "'";
+  }
+
+  const controls = document.getElementById("controls");
+  AXIS_GROUPS.forEach(group => {
+    const box = document.createElement("div");
+    box.className = "axis";
+    const h = document.createElement("h3");
+    h.innerHTML = `${group.label} &nbsp;<span>${group.names.join(" · ")}</span>`;
+    box.appendChild(h);
+    group.names.forEach(name => {
+      const row = document.createElement("div");
+      row.className = "row";
+      [0, 1, 2].forEach(slot => {
+        const b = document.createElement("button");
+        b.addEventListener("click", () => doMove(resolveMove(name, slot)));
+        moveButtons.push({ el: b, circle: name, slot });
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+    controls.appendChild(box);
+  });
+
+  function relabel() {
+    moveButtons.forEach(({ el, circle, slot }) => {
+      const actual = resolveMove(circle, slot);
+      if (axisMode && slot !== 2) {
+        el.textContent = circle + (slot === 0 ? " ↻" : " ↺");
+        el.title = `turns ${circle} with the axis — applies ${actual}`;
+      } else {
+        el.textContent = actual;
+        el.title = "";
+      }
+    });
+    modeNote.textContent = axisMode
+      ? "↻ spins every circle on an axis the same way — history stays in standard notation"
+      : "standard notation — each face turns clockwise seen from outside itself";
+  }
+
+  axisModeBox.addEventListener("change", () => { axisMode = axisModeBox.checked; relabel(); });
+  relabel();
+
+  function setState(next, label) {
+    queue.length = 0;
+    playing = false;
+    state = next;
+    history = [];
+    document.getElementById("lastMove").textContent = "—";
+    document.getElementById("cycleText").textContent = label;
+    paint();
+  }
+
+  document.getElementById("scramble").addEventListener("click", () => {
+    let s = SOLVED, last = "", moves = [];
+    for (let i = 0; i < 25; i++) {
+      let m;
+      do { m = FACE_MOVES[Math.floor(Math.random() * FACE_MOVES.length)]; } while (m[0] === last);
+      last = m[0];
+      moves.push(m);
+      s = permute(s, GEO.moves[m]);
+    }
+    setState(s, "scrambled with 25 random turns");
+    requestSolve();
+  });
+
+  solveBtn.addEventListener("click", requestSolve);
+
+  document.getElementById("reset").addEventListener("click", () => {
+    setState(SOLVED, "back to solved");
+    setStatus("solved — nothing to do");
+  });
+
+  document.getElementById("superflip").addEventListener("click", () => {
+    setState(SUPERFLIP, "superflip — every edge flipped, 20 turns from solved");
+    // the worst case in the whole group: searching it live takes minutes, so load the
+    // 20-turn solution the Python solver already found for it
+    seqInput.value = "R L U2 F U' D F2 R2 B2 L U2 F' B' U R2 D F2 U R2 U";
+    staleShown = false;
+    setStatus("20 turns · known solution for the hardest position · press Play");
+  });
+
+  document.getElementById("undo").addEventListener("click", () => {
+    if (!history.length || busy) return;
+    const last = history.pop();
+    const inv = last.length === 1 ? last + "'" : (last[1] === "2" ? last : last[0]);
+    doMove(inv, { record: false });
+  });
+
+  document.getElementById("play").addEventListener("click", () => {
+    const raw = seqInput.value.trim().split(/\s+/).filter(Boolean);
+    const good = raw.filter(m => GEO.moves[m]);
+    if (!good.length) {
+      setStatus("no turns recognised in that sequence", "bad");
+      return;
+    }
+    playing = true;
+    good.forEach(m => doMove(m));
+    queue.push({ move: null, count: good.length });
+    pump();
+  });
+
+  paint();
+  document.getElementById("cycleText").textContent = "pick a turn below, or press Scramble";
+})();
+</script>
+
+</body>
+</html>
