@@ -119,8 +119,7 @@ the diagram matches the verified model exactly.
 so there is no backend. The only external request is the Google Fonts stylesheet, and it
 falls back to system fonts without one.
 
-It is served by the `rubik-web` container on port **8098**
-(`steeplelabs/deploy/docker-compose.sites.yml`), which the public web server proxies for
+It can be served by the a container on defined port which the public web server proxies for
 `rubik.steeplelabs.com`. To publish a change:
 
 ```
