@@ -126,5 +126,3 @@ It can be served by the a container on defined port which the public web server 
 python build_standalone.py
 cp index.html ../../steeplelabs/deploy/sites/rubik/
 ```
-
-nginx reads from disk per request, so no restart is needed.
